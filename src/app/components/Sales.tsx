@@ -1,6 +1,8 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Receipt, Search } from 'lucide-react';
 import { useStore } from '../store';
+
+const ITEMS_PER_PAGE = 10;
 
 function formatCurrency(amount: number): string {
   return `PHP ${amount.toFixed(2)}`;
@@ -9,6 +11,8 @@ function formatCurrency(amount: number): string {
 export function Sales() {
   const { sales, loading } = useStore();
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const totalRevenue = useMemo(() => {
     return sales.reduce((total, sale) => total + sale.totalAmount, 0);
@@ -20,6 +24,51 @@ export function Sales() {
       0
     );
   }, [sales]);
+
+  const filteredSales = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    if (!normalizedSearch) {
+      return sales;
+    }
+
+    return sales.filter((sale) => {
+      const searchableText = [
+        sale.receiptNo,
+        sale.date,
+        sale.customerName || 'Walk-in',
+        sale.totalAmount.toFixed(2),
+        sale.paidAmount.toFixed(2),
+        sale.changeAmount.toFixed(2),
+        ...sale.items.map((item) => item.productName),
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      return searchableText.includes(normalizedSearch);
+    });
+  }, [sales, searchTerm]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredSales.length / ITEMS_PER_PAGE));
+
+  const paginatedSales = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredSales.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [currentPage, filteredSales]);
+
+  const pageStart = filteredSales.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
+  const pageEnd = Math.min(currentPage * ITEMS_PER_PAGE, filteredSales.length);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setExpandedSaleId(null);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   if (loading) {
     return (
@@ -63,9 +112,21 @@ export function Sales() {
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center gap-2">
-          <Receipt className="w-5 h-5 text-blue-600" />
-          <h2 className="text-lg text-gray-900">Recent Sales</h2>
+        <div className="px-6 py-4 border-b border-gray-200 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-2">
+            <Receipt className="w-5 h-5 text-blue-600" />
+            <h2 className="text-lg text-gray-900">Recent Sales</h2>
+          </div>
+          <div className="relative w-full lg:max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search sales..."
+              className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -81,8 +142,8 @@ export function Sales() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {sales.length > 0 ? (
-                sales.map((sale) => (
+              {filteredSales.length > 0 ? (
+                paginatedSales.map((sale) => (
                   <Fragment key={sale.id}>
                     <tr className="hover:bg-gray-50">
                       <td className="px-6 py-4 text-sm text-gray-900">
@@ -154,7 +215,9 @@ export function Sales() {
                   <td colSpan={7} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center gap-2 text-gray-500">
                       <Search className="w-8 h-8 text-gray-300" />
-                      <p className="text-sm">No sales recorded yet.</p>
+                      <p className="text-sm">
+                        {searchTerm ? 'No sales match your search.' : 'No sales recorded yet.'}
+                      </p>
                     </div>
                   </td>
                 </tr>
@@ -162,6 +225,34 @@ export function Sales() {
             </tbody>
           </table>
         </div>
+        {filteredSales.length > 0 && (
+          <div className="flex flex-col gap-3 border-t border-gray-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-gray-500">
+              Showing {pageStart}-{pageEnd} of {filteredSales.length} sales
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+                disabled={currentPage === 1}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="px-2 text-sm text-gray-600">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

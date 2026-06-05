@@ -1,11 +1,60 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../store';
-import { Plus, TrendingUp, TrendingDown } from 'lucide-react';
+import { Plus, Search, TrendingUp, TrendingDown } from 'lucide-react';
+
+const ITEMS_PER_PAGE = 10;
 
 export function StockManagement() {
   const { products, stockMovements, loading, addStockMovement } = useStore();
   const [showModal, setShowModal] = useState(false);
   const [formError, setFormError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const filteredStockMovements = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    if (!normalizedSearch) {
+      return stockMovements;
+    }
+
+    return stockMovements.filter((movement) => {
+      const movementType = movement.type === 'IN' ? 'stock in' : 'stock out';
+      const signedQuantity = `${movement.type === 'IN' ? '+' : '-'}${movement.quantity}`;
+      const searchableText = [
+        movement.date,
+        movement.productName,
+        movementType,
+        movement.quantity.toString(),
+        signedQuantity,
+        movement.notes,
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      return searchableText.includes(normalizedSearch);
+    });
+  }, [searchTerm, stockMovements]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredStockMovements.length / ITEMS_PER_PAGE));
+
+  const paginatedStockMovements = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredStockMovements.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [currentPage, filteredStockMovements]);
+
+  const pageStart = filteredStockMovements.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
+  const pageEnd = Math.min(currentPage * ITEMS_PER_PAGE, filteredStockMovements.length);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -89,6 +138,18 @@ export function StockManagement() {
 
       {/* Stock Movement History */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="border-b border-gray-200 px-6 py-4">
+          <div className="relative w-full sm:max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search stock movements..."
+              className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
@@ -107,8 +168,8 @@ export function StockManagement() {
                     Loading stock movements...
                   </td>
                 </tr>
-              ) : stockMovements.length > 0 ? (
-                stockMovements.map((movement) => (
+              ) : filteredStockMovements.length > 0 ? (
+                paginatedStockMovements.map((movement) => (
                   <tr key={movement.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm text-gray-900">{movement.date}</td>
                     <td className="px-6 py-4 text-sm text-gray-900">{movement.productName}</td>
@@ -141,13 +202,41 @@ export function StockManagement() {
               ) : (
                 <tr>
                   <td colSpan={5} className="px-6 py-10 text-center text-sm text-gray-500">
-                    No stock movements recorded yet.
+                    {searchTerm ? 'No stock movements match your search.' : 'No stock movements recorded yet.'}
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+        {!loading && filteredStockMovements.length > 0 && (
+          <div className="flex flex-col gap-3 border-t border-gray-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-gray-500">
+              Showing {pageStart}-{pageEnd} of {filteredStockMovements.length} movements
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+                disabled={currentPage === 1}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="px-2 text-sm text-gray-600">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Add Movement Modal */}
