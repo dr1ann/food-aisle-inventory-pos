@@ -6,6 +6,8 @@ import {
   ApiPurchaseOrder,
   ApiSupplier,
   ApiCategory,
+  ApiSale,
+  CheckoutSaleInput,
 } from '../services/api';
 
 export interface Product {
@@ -50,12 +52,31 @@ export interface PurchaseOrder {
   items: { productId: string; productName: string; quantity: number }[];
 }
 
+export interface Sale {
+  id: string;
+  receiptNo: string;
+  totalAmount: number;
+  paidAmount: number;
+  changeAmount: number;
+  paymentMethod: 'CASH';
+  customerName: string;
+  date: string;
+  items: {
+    productId: string;
+    productName: string;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+  }[];
+}
+
 interface StoreContextType {
   products: Product[];
   suppliers: Supplier[];
   categories: Category[];
   stockMovements: StockMovement[];
   purchaseOrders: PurchaseOrder[];
+  sales: Sale[];
   loading: boolean;
   addProduct: (product: ProductFormInput) => Promise<void>;
   updateProduct: (id: string, product: Partial<ProductFormInput>) => Promise<void>;
@@ -67,6 +88,7 @@ interface StoreContextType {
   addStockMovement: (movement: Omit<StockMovement, 'id'>) => void;
   addPurchaseOrder: (po: Omit<PurchaseOrder, 'id'>) => void;
   completePurchaseOrder: (id: string) => void;
+  checkoutSale: (sale: CheckoutSaleInput) => Promise<Sale>;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -146,24 +168,60 @@ function mapPurchaseOrder(order: ApiPurchaseOrder): PurchaseOrder {
   };
 }
 
-export function StoreProvider({ children }: { children: ReactNode }) {
+function mapSale(sale: ApiSale): Sale {
+  return {
+    id: sale.id,
+    receiptNo: sale.receiptNo,
+    totalAmount: Number(sale.totalAmount),
+    paidAmount: Number(sale.paidAmount),
+    changeAmount: Number(sale.changeAmount),
+    paymentMethod: sale.paymentMethod,
+    customerName: sale.customerName ?? '',
+    date: new Date(sale.createdAt).toISOString().split('T')[0],
+    items: sale.items.map((item) => ({
+      productId: item.productId,
+      productName: item.product.name,
+      quantity: item.quantity,
+      unitPrice: Number(item.unitPrice),
+      lineTotal: Number(item.lineTotal),
+    })),
+  };
+}
+
+type StoreScope = 'admin' | 'pos';
+
+export function StoreProvider({ children, scope = 'admin' }: { children: ReactNode; scope?: StoreScope }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refreshData = async () => {
     try {
       setLoading(true);
 
-      const [productsRes, suppliersRes, categoriesRes, stockRes, ordersRes] = await Promise.all([
+      if (scope === 'pos') {
+        const productsRes = await apiService.getProductsWithStock();
+
+        setProducts(productsRes.map(mapProduct));
+        setSales([]);
+        setSuppliers([]);
+        setCategories([]);
+        setStockMovements([]);
+        setPurchaseOrders([]);
+        return;
+      }
+
+      const [productsRes, suppliersRes, categoriesRes, stockRes, ordersRes, salesRes] = await Promise.all([
         apiService.getProductsWithStock(),
         apiService.getSuppliers(),
         apiService.getCategories(),
         apiService.getRecentStockActivity(),
         apiService.getPurchaseOrders(),
+        apiService.getSales(),
       ]);
 
       setProducts(productsRes.map(mapProduct));
@@ -171,6 +229,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setCategories(categoriesRes);
       setStockMovements(stockRes.map(mapStockMovement));
       setPurchaseOrders(ordersRes.map(mapPurchaseOrder));
+      setSales(salesRes.map(mapSale));
     } catch (error) {
       console.error('Failed to fetch data from API:', error);
     } finally {
@@ -181,7 +240,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Fetch data from API on mount
   useEffect(() => {
     void refreshData();
-  }, []);
+  }, [scope]);
 
   const addProduct = async (product: ProductFormInput): Promise<void> => {
     try {
@@ -317,6 +376,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const checkoutSale = async (sale: CheckoutSaleInput): Promise<Sale> => {
+    try {
+      const completedSale = await apiService.checkoutSale(sale);
+      await refreshData();
+      return mapSale(completedSale);
+    } catch (error) {
+      console.error('Failed to checkout sale:', error);
+      throw new Error(getErrorMessage(error, 'Failed to checkout sale.'));
+    }
+  };
+
   return (
     <StoreContext.Provider
       value={{
@@ -325,6 +395,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         categories,
         stockMovements,
         purchaseOrders,
+        sales,
         loading,
         addProduct,
         updateProduct,
@@ -336,6 +407,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         addStockMovement,
         addPurchaseOrder,
         completePurchaseOrder,
+        checkoutSale,
       }}
     >
       {children}

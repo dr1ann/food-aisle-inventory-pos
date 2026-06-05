@@ -34,8 +34,8 @@ export function Login() {
       const response = await apiService.login(normalizedEmail, password);
       // apiService.login returns the data object directly (not wrapped)
       if (response && response.token) {
-        apiService.setToken(response.token);
-        navigate('/');
+        apiService.setAuth(response);
+        navigate(response.user.role === 'cashier' ? '/pos' : '/');
       } else {
         setError('Login failed - Invalid response from server');
       }

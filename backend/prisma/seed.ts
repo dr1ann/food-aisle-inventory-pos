@@ -7,13 +7,15 @@ async function main() {
     // Clear existing data
     await prisma.purchaseOrderItem.deleteMany();
     await prisma.purchaseOrder.deleteMany();
+    await prisma.saleItem.deleteMany();
+    await prisma.sale.deleteMany();
     await prisma.stockMovement.deleteMany();
     await prisma.product.deleteMany();
     await prisma.supplier.deleteMany();
     await prisma.category.deleteMany();
     await prisma.user.deleteMany();
 
-    // Create admin user
+    // Create default users
     const hashedPassword = await bcryptjs.hash("admin123", 10);
     await prisma.user.create({
         data: {
@@ -21,6 +23,16 @@ async function main() {
             password: hashedPassword,
             name: "Admin",
             role: "admin",
+        },
+    });
+
+    const cashierPassword = await bcryptjs.hash("cashier123", 10);
+    await prisma.user.create({
+        data: {
+            email: "cashier@foodaisle.com",
+            password: cashierPassword,
+            name: "Cashier",
+            role: "cashier",
         },
     });
 

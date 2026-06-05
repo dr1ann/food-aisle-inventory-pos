@@ -9,6 +9,7 @@ import stockRoutes from "./routes/stock.ts";
 import supplierRoutes from "./routes/supplier.ts";
 import categoryRoutes from "./routes/category.ts";
 import purchaseOrderRoutes from "./routes/purchaseOrder.ts";
+import saleRoutes from "./routes/sale.ts";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -30,6 +31,7 @@ app.use("/api/stock", stockRoutes);
 app.use("/api/suppliers", supplierRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/purchase-orders", purchaseOrderRoutes);
+app.use("/api/sales", saleRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
@@ -37,7 +39,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // Error handler
-app.use((err: any, req: express.Request, res: express.Response) => {
+app.use((err: unknown, req: express.Request, res: express.Response) => {
     console.error(err);
     res.status(500).json({
         success: false,

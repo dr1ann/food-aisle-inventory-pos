@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from 'react-router';
-import { LayoutDashboard, Package, TrendingUp, Users, Tag, FileText, Menu, X, User } from 'lucide-react';
+import { LayoutDashboard, Package, TrendingUp, Users, Tag, FileText, Menu, X, User, Receipt } from 'lucide-react';
 import { useState } from 'react';
 import { StoreProvider } from '../store';
 import { apiService } from '../../services/api';
@@ -11,6 +11,7 @@ const navItems = [
   { path: '/suppliers', label: 'Suppliers', icon: Users },
   { path: '/categories', label: 'Categories', icon: Tag },
   { path: '/purchase-orders', label: 'Purchase Orders', icon: FileText },
+  { path: '/sales', label: 'Sales', icon: Receipt },
 ];
 
 export function Layout() {

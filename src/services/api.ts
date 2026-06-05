@@ -11,6 +11,18 @@ interface ApiErrorResponse {
     message?: string;
 }
 
+export interface AuthUser {
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+}
+
+export interface LoginResult {
+    token: string;
+    user: AuthUser;
+}
+
 export interface ApiCategory {
     id: string;
     name: string;
@@ -68,12 +80,56 @@ export interface ApiPurchaseOrder {
     items: ApiPurchaseOrderItem[];
 }
 
+export interface ApiSaleItem {
+    id: string;
+    saleId: string;
+    productId: string;
+    quantity: number;
+    unitPrice: string;
+    lineTotal: string;
+    product: {
+        id: string;
+        name: string;
+        barcode: string;
+    };
+}
+
+export interface ApiSale {
+    id: string;
+    receiptNo: string;
+    totalAmount: string;
+    paidAmount: string;
+    changeAmount: string;
+    paymentMethod: "CASH";
+    customerName: string | null;
+    createdAt: string;
+    items: ApiSaleItem[];
+}
+
+export interface CheckoutSaleInput {
+    items: {
+        productId: string;
+        quantity: number;
+    }[];
+    paymentMethod: "CASH";
+    paidAmount: string;
+    customerName?: string;
+}
+
 class ApiService {
     private token: string | null = null;
+    private user: AuthUser | null = null;
 
     setToken(token: string) {
         this.token = token;
         localStorage.setItem("token", token);
+    }
+
+    setAuth(data: LoginResult) {
+        this.token = data.token;
+        this.user = data.user;
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
     }
 
     getToken() {
@@ -83,9 +139,28 @@ class ApiService {
         return this.token;
     }
 
+    getUser(): AuthUser | null {
+        if (!this.user) {
+            const storedUser = localStorage.getItem("user");
+
+            if (storedUser) {
+                try {
+                    this.user = JSON.parse(storedUser) as AuthUser;
+                } catch {
+                    this.user = null;
+                    localStorage.removeItem("user");
+                }
+            }
+        }
+
+        return this.user;
+    }
+
     clearToken() {
         this.token = null;
+        this.user = null;
         localStorage.removeItem("token");
+        localStorage.removeItem("user");
     }
 
     private getHeaders() {
@@ -145,7 +220,7 @@ class ApiService {
     }
 
     // Auth
-    async login(email: string, password: string): Promise<{ token: string }> {
+    async login(email: string, password: string): Promise<LoginResult> {
         return this.request("/auth/login", "POST", { email, password });
     }
 
@@ -266,6 +341,19 @@ class ApiService {
 
     async getPendingPurchaseOrders(): Promise<ApiPurchaseOrder[]> {
         return this.request("/purchase-orders/pending");
+    }
+
+    // POS Sales
+    async checkoutSale(data: CheckoutSaleInput): Promise<ApiSale> {
+        return this.request("/sales/checkout", "POST", data);
+    }
+
+    async getSales(): Promise<ApiSale[]> {
+        return this.request("/sales");
+    }
+
+    async getSaleById(id: string): Promise<ApiSale> {
+        return this.request(`/sales/${id}`);
     }
 }
 

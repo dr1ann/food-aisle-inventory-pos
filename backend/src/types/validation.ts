@@ -103,7 +103,7 @@ export const CheckoutSaleItemSchema = z.object({
 
 export const CheckoutSaleSchema = z.object({
     items: z.array(CheckoutSaleItemSchema).min(1),
-    paymentMethod: z.enum(["CASH", "CARD", "GCASH"]).default("CASH"),
+    paymentMethod: z.literal("CASH").default("CASH"),
     paidAmount: z.string().regex(/^\d+(\.\d{1,2})?$/),
     customerName: z.string().trim().min(1).optional(),
 });

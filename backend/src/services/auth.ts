@@ -12,6 +12,10 @@ export async function loginUser(data: LoginRequest): Promise<AuthResponse> {
         throw new Error("User not found");
     }
 
+    if (!user.isActive) {
+        throw new Error("User account is inactive");
+    }
+
     const passwordMatch = await comparePassword(data.password, user.password);
     if (!passwordMatch) {
         throw new Error("Invalid password");
