@@ -35,37 +35,35 @@ model Category {
 }
 
 model Supplier {
-  id          String            @id @default(cuid())
+  id          String          @id @default(cuid())
   name        String
   contactInfo String?
   address     String?
-  isActive    Boolean           @default(true)
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  products    Product[]
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
   orders      PurchaseOrder[]
 
   @@map("suppliers")
 }
 
 model Product {
-  id              String            @id @default(cuid())
-  name            String
-  barcode         String            @unique
-  price           Decimal           @db.Decimal(10, 2)
-  categoryId      String
-  supplierId      String?
-  isActive        Boolean           @default(true)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  category        Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  supplier        Supplier?         @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  stockMovements  StockMovement[]
-  orderItems      PurchaseOrderItem[]
-  saleItems       SaleItem[]
+  id            String              @id @default(cuid())
+  name          String
+  barcode       String              @unique
+  description   String?
+  costPrice     Decimal             @db.Decimal(10, 2)
+  sellingPrice  Decimal             @db.Decimal(10, 2)
+  categoryId    String
+  isActive      Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  category      Category            @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  stockMovements StockMovement[]
+  orderItems    PurchaseOrderItem[]
+  saleItems     SaleItem[]
 
   @@index([categoryId])
-  @@index([supplierId])
   @@map("products")
 }
 
@@ -113,26 +111,26 @@ model StockMovement {
 }
 
 model PurchaseOrder {
-  id        String              @id @default(cuid())
+  id         String              @id @default(cuid())
   supplierId String
-  status    String              @default("PENDING") // PENDING or COMPLETED
-  createdAt DateTime            @default(now())
-  updatedAt DateTime            @updatedAt
-  supplier  Supplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  items     PurchaseOrderItem[]
+  status     String              @default("PENDING") // PENDING or COMPLETED
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  supplier   Supplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  items      PurchaseOrderItem[]
 
   @@index([supplierId])
   @@map("purchase_orders")
 }
 
 model PurchaseOrderItem {
-  id              String         @id @default(cuid())
-  orderId         String
-  productId       String
-  quantity        Int
-  receivedQty     Int            @default(0)
-  order           PurchaseOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product         Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  id          String        @id @default(cuid())
+  orderId     String
+  productId   String
+  quantity    Int
+  receivedQty Int           @default(0)
+  order       PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   @@unique([orderId, productId])
   @@index([orderId])

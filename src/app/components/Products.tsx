@@ -3,10 +3,9 @@ import { useStore, Product } from '../store';
 import { Plus, Search, Edit2, Filter } from 'lucide-react';
 
 export function Products() {
-  const { products, suppliers, categories, loading, addProduct, updateProduct } = useStore();
+  const { products, categories, loading, addProduct, updateProduct } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
-  const [supplierFilter, setSupplierFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formError, setFormError] = useState('');
@@ -20,16 +19,14 @@ export function Products() {
     return products.filter(p => {
       const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = !categoryFilter || p.category === categoryFilter;
-      const matchesSupplier = !supplierFilter || p.supplier === supplierFilter;
-      return matchesSearch && matchesCategory && matchesSupplier;
+      return matchesSearch && matchesCategory;
     });
-  }, [products, searchTerm, categoryFilter, supplierFilter]);
+  }, [products, searchTerm, categoryFilter]);
 
   const getProductErrorMessage = (error: unknown, fallbackMessage: string) => {
     if (error instanceof Error && error.message.trim()) {
       return error.message;
     }
-
     return fallbackMessage;
   };
 
@@ -38,8 +35,9 @@ export function Products() {
     const formData = new FormData(e.currentTarget);
     const name = formData.get('name')?.toString().trim() ?? '';
     const categoryId = formData.get('categoryId')?.toString().trim() ?? '';
-    const supplierId = formData.get('supplierId')?.toString().trim() ?? '';
-    const price = Number(formData.get('price'));
+    const description = formData.get('description')?.toString().trim() ?? '';
+    const costPrice = Number(formData.get('costPrice'));
+    const sellingPrice = Number(formData.get('sellingPrice'));
 
     if (!name) {
       setFormError('Product name is required.');
@@ -51,16 +49,22 @@ export function Products() {
       return;
     }
 
-    if (!Number.isFinite(price) || price <= 0) {
-      setFormError('Price must be greater than 0.');
+    if (!Number.isFinite(costPrice) || costPrice <= 0) {
+      setFormError('Cost price must be greater than 0.');
+      return;
+    }
+
+    if (!Number.isFinite(sellingPrice) || sellingPrice <= 0) {
+      setFormError('Selling price must be greater than 0.');
       return;
     }
 
     const productData = {
       name,
       categoryId,
-      supplierId: supplierId || undefined,
-      price,
+      description: description || undefined,
+      costPrice,
+      sellingPrice,
     };
 
     setFormError('');
@@ -80,7 +84,6 @@ export function Products() {
         error,
         editingProduct ? 'Failed to update product.' : 'Failed to add product.'
       );
-
       setFormError(errorMessage);
       setListError(errorMessage);
     }
@@ -119,12 +122,6 @@ export function Products() {
         </button>
       </div>
 
-      {suppliers.length === 0 && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg">
-          No suppliers added yet. Supplier is optional when creating a product.
-        </div>
-      )}
-
       {listError && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
           {listError}
@@ -133,7 +130,7 @@ export function Products() {
 
       {/* Filters */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -157,19 +154,6 @@ export function Products() {
               ))}
             </select>
           </div>
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <select
-              value={supplierFilter}
-              onChange={(e) => setSupplierFilter(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white"
-            >
-              <option value="">All Suppliers</option>
-              {suppliers.map(sup => (
-                <option key={sup.id} value={sup.name}>{sup.name}</option>
-              ))}
-            </select>
-          </div>
         </div>
       </div>
 
@@ -181,8 +165,9 @@ export function Products() {
               <tr>
                 <th className="text-left px-6 py-3 text-xs text-gray-500 uppercase tracking-wider">Product Name</th>
                 <th className="text-left px-6 py-3 text-xs text-gray-500 uppercase tracking-wider">Category</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-500 uppercase tracking-wider">Supplier</th>
-                <th className="text-left px-6 py-3 text-xs text-gray-500 uppercase tracking-wider">Price</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-500 uppercase tracking-wider">Description</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-500 uppercase tracking-wider">Cost Price</th>
+                <th className="text-left px-6 py-3 text-xs text-gray-500 uppercase tracking-wider">Selling Price</th>
                 <th className="text-left px-6 py-3 text-xs text-gray-500 uppercase tracking-wider">Current Stock</th>
                 <th className="text-left px-6 py-3 text-xs text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="text-left px-6 py-3 text-xs text-gray-500 uppercase tracking-wider">Actions</th>
@@ -191,7 +176,7 @@ export function Products() {
             <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-10 text-center text-sm text-gray-500">
+                  <td colSpan={8} className="px-6 py-10 text-center text-sm text-gray-500">
                     Loading products...
                   </td>
                 </tr>
@@ -200,8 +185,11 @@ export function Products() {
                   <tr key={product.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm text-gray-900">{product.name}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{product.category}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{product.supplier}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">₱{product.price.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                      {product.description || <span className="italic text-gray-400">—</span>}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">₱{product.costPrice.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">₱{product.sellingPrice.toFixed(2)}</td>
                     <td className="px-6 py-4 text-sm text-gray-900">{product.stock}</td>
                     <td className="px-6 py-4">{getStatusBadge(product.status)}</td>
                     <td className="px-6 py-4">
@@ -220,8 +208,8 @@ export function Products() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-6 py-10 text-center text-sm text-gray-500">
-                    {searchTerm || categoryFilter || supplierFilter
+                  <td colSpan={8} className="px-6 py-10 text-center text-sm text-gray-500">
+                    {searchTerm || categoryFilter
                       ? 'No products match the current filters.'
                       : 'No products available yet.'}
                   </td>
@@ -272,30 +260,55 @@ export function Products() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm text-gray-700 mb-1">Supplier</label>
-                <select
-                  name="supplierId"
-                  defaultValue={editingProduct ? suppliers.find(sup => sup.name === editingProduct.supplier)?.id ?? '' : ''}
+                <label className="block text-sm text-gray-700 mb-1">
+                  Description <span className="text-gray-400">(optional)</span>
+                </label>
+                <textarea
+                  name="description"
+                  defaultValue={editingProduct?.description}
+                  rows={2}
                   autoComplete="off"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select Supplier</option>
-                  {suppliers.map(sup => (
-                    <option key={sup.id} value={sup.id}>{sup.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-700 mb-1">Price</label>
-                <input
-                  type="number"
-                  name="price"
-                  step="0.01"
-                  defaultValue={editingProduct?.price}
-                  required
-                  autoComplete="off"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Brief product description..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">Cost Price</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">₱</span>
+                    <input
+                      type="number"
+                      name="costPrice"
+                      step="0.01"
+                      min="0.01"
+                      defaultValue={editingProduct?.costPrice}
+                      required
+                      autoComplete="off"
+                      placeholder="0.00"
+                      className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">Purchase price from supplier</p>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">Selling Price</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">₱</span>
+                    <input
+                      type="number"
+                      name="sellingPrice"
+                      step="0.01"
+                      min="0.01"
+                      defaultValue={editingProduct?.sellingPrice}
+                      required
+                      autoComplete="off"
+                      placeholder="0.00"
+                      className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">Retail price for POS</p>
+                </div>
               </div>
               {editingProduct && (
                 <div className="bg-gray-50 rounded-lg p-3">

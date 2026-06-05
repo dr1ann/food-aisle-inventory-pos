@@ -8,7 +8,6 @@ export async function getSuppliers() {
     return prisma.supplier.findMany({
         where: { isActive: true },
         include: {
-            products: true,
             orders: true,
         },
     });
@@ -18,7 +17,6 @@ export async function getSupplierById(id: string) {
     const supplier = await prisma.supplier.findUnique({
         where: { id },
         include: {
-            products: true,
             orders: {
                 include: {
                     items: {
@@ -66,14 +64,5 @@ export async function deleteSupplier(id: string) {
     return prisma.supplier.update({
         where: { id },
         data: { isActive: false },
-    });
-}
-
-export async function getSupplierProducts(supplierId: string) {
-    return prisma.product.findMany({
-        where: {
-            supplierId,
-            isActive: true,
-        },
     });
 }

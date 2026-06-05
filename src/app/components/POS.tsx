@@ -5,7 +5,7 @@ import { Minus, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
 interface CartItem {
   productId: string;
   productName: string;
-  price: number;
+  sellingPrice: number;
   stock: number;
   quantity: number;
 }
@@ -39,7 +39,7 @@ export function POS() {
   }, [products, searchTerm]);
 
   const cartTotal = useMemo(() => {
-    return cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
+    return cartItems.reduce((total, item) => total + item.sellingPrice * item.quantity, 0);
   }, [cartItems]);
 
   const paidValue = Number(paidAmount);
@@ -70,7 +70,7 @@ export function POS() {
         {
           productId: product.id,
           productName: product.name,
-          price: product.price,
+          sellingPrice: product.sellingPrice,
           stock: product.stock,
           quantity: 1,
         },
@@ -198,7 +198,7 @@ export function POS() {
                         <td className="px-6 py-4 text-sm text-gray-900">{product.name}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{product.category}</td>
                         <td className="px-6 py-4 text-sm text-gray-900">{product.stock}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{formatCurrency(product.price)}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">{formatCurrency(product.sellingPrice)}</td>
                         <td className="px-6 py-4">
                           <button
                             type="button"
@@ -260,7 +260,7 @@ export function POS() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm text-gray-900">{item.productName}</p>
-                        <p className="text-xs text-gray-500">{formatCurrency(item.price)} each</p>
+                        <p className="text-xs text-gray-500">{formatCurrency(item.sellingPrice)} each</p>
                       </div>
                       <button
                         type="button"
@@ -298,7 +298,7 @@ export function POS() {
                           <Plus className="w-4 h-4" />
                         </button>
                       </div>
-                      <span className="text-sm text-gray-900">{formatCurrency(item.price * item.quantity)}</span>
+                      <span className="text-sm text-gray-900">{formatCurrency(item.sellingPrice * item.quantity)}</span>
                     </div>
                   </div>
                 ))

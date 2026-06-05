@@ -9,7 +9,6 @@ export async function getProducts() {
         where: { isActive: true },
         include: {
             category: true,
-            supplier: true,
             stockMovements: {
                 orderBy: { date: "desc" },
             },
@@ -22,7 +21,6 @@ export async function getProductById(id: string) {
         where: { id },
         include: {
             category: true,
-            supplier: true,
             stockMovements: {
                 orderBy: { date: "desc" },
             },
@@ -55,28 +53,17 @@ export async function createProduct(data: CreateProductRequest) {
         throw new Error("Category not found");
     }
 
-    // Verify supplier exists if provided
-    if (data.supplierId) {
-        const supplier = await prisma.supplier.findUnique({
-            where: { id: data.supplierId },
-        });
-
-        if (!supplier) {
-            throw new Error("Supplier not found");
-        }
-    }
-
     return prisma.product.create({
         data: {
             name: data.name,
             barcode: data.barcode,
-            price: data.price,
+            description: data.description ?? null,
+            costPrice: data.costPrice,
+            sellingPrice: data.sellingPrice,
             categoryId: data.categoryId,
-            supplierId: data.supplierId || null,
         },
         include: {
             category: true,
-            supplier: true,
         },
     });
 }
@@ -110,23 +97,11 @@ export async function updateProduct(id: string, data: UpdateProductRequest) {
         }
     }
 
-    // Verify supplier if updating
-    if (data.supplierId) {
-        const supplier = await prisma.supplier.findUnique({
-            where: { id: data.supplierId },
-        });
-
-        if (!supplier) {
-            throw new Error("Supplier not found");
-        }
-    }
-
     return prisma.product.update({
         where: { id },
         data,
         include: {
             category: true,
-            supplier: true,
         },
     });
 }
@@ -153,7 +128,6 @@ export async function getProductsByCategory(categoryId: string) {
         },
         include: {
             category: true,
-            supplier: true,
             stockMovements: true,
         },
     });
@@ -179,7 +153,6 @@ export async function getProductsWithStock() {
         where: { isActive: true },
         include: {
             category: true,
-            supplier: true,
             stockMovements: true,
         },
     });

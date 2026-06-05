@@ -3,50 +3,87 @@ import bcryptjs from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+/**
+ * Seed script — ADDITIVE mode.
+ *
+ * - Users and Categories are upserted (safe to re-run; won't duplicate).
+ * - Products are created fresh each run using a timestamp-based barcode,
+ *   so running multiple times will add more sample products.
+ *
+ * To wipe all data first, run:
+ *   npx prisma migrate reset --force
+ * then re-run this seed.
+ */
 async function main() {
-    // Clear existing data
-    await prisma.purchaseOrderItem.deleteMany();
-    await prisma.purchaseOrder.deleteMany();
-    await prisma.saleItem.deleteMany();
-    await prisma.sale.deleteMany();
-    await prisma.stockMovement.deleteMany();
-    await prisma.product.deleteMany();
-    await prisma.supplier.deleteMany();
-    await prisma.category.deleteMany();
-    await prisma.user.deleteMany();
-
-    // Create default users
-    const hashedPassword = await bcryptjs.hash("admin123", 10);
-    await prisma.user.create({
-        data: {
+    // ── Users (upsert — idempotent) ──────────────────────────────────────────
+    const hashedAdminPw = await bcryptjs.hash("admin123", 10);
+    await prisma.user.upsert({
+        where: { email: "admin@foodaisle.com" },
+        update: {},
+        create: {
             email: "admin@foodaisle.com",
-            password: hashedPassword,
+            password: hashedAdminPw,
             name: "Admin",
             role: "admin",
         },
     });
 
-    const cashierPassword = await bcryptjs.hash("cashier123", 10);
-    await prisma.user.create({
-        data: {
+    const hashedCashierPw = await bcryptjs.hash("cashier123", 10);
+    await prisma.user.upsert({
+        where: { email: "cashier@foodaisle.com" },
+        update: {},
+        create: {
             email: "cashier@foodaisle.com",
-            password: cashierPassword,
+            password: hashedCashierPw,
             name: "Cashier",
             role: "cashier",
         },
     });
 
-    // Create default categories
-    const categories = await Promise.all([
-        prisma.category.create({ data: { name: "Produce", isActive: true } }),
-        prisma.category.create({ data: { name: "Dairy", isActive: true } }),
-        prisma.category.create({ data: { name: "Meat", isActive: true } }),
-        prisma.category.create({ data: { name: "Beverages", isActive: true } }),
-        prisma.category.create({ data: { name: "Dry Goods", isActive: true } }),
-    ]);
+    // ── Categories (upsert — idempotent) ─────────────────────────────────────
+    const categoryNames = ["Produce", "Dairy", "Meat", "Beverages", "Dry Goods"];
+    const categories: Record<string, string> = {};
 
-    console.log("✅ Database seeded with admin user and default categories successfully!");
-    console.log(`✅ Created ${categories.length} categories:`, categories.map(c => c.name).join(", "));
+    for (const name of categoryNames) {
+        const cat = await prisma.category.upsert({
+            where: { name },
+            update: { isActive: true },
+            create: { name, isActive: true },
+        });
+        categories[name] = cat.id;
+    }
+
+    // ── Products (always created fresh — run multiple times to add more) ──────
+    const ts = Date.now();
+    const productSeed = [
+        {
+            name: "Trust",
+            description: "Condom",
+            costPrice: "180.00",
+            sellingPrice: "270.00",
+            category: "Produce",
+        }
+    ];
+
+    const created = await Promise.all(
+        productSeed.map((p, i) =>
+            prisma.product.create({
+                data: {
+                    name: p.name,
+                    barcode: `PROD-${ts}-${i + 1}`,
+                    description: p.description,
+                    costPrice: p.costPrice,
+                    sellingPrice: p.sellingPrice,
+                    categoryId: categories[p.category],
+                },
+            })
+        )
+    );
+
+    console.log("✅ Seed completed successfully!");
+    console.log(`   • 2 users ensured (admin + cashier)`);
+    console.log(`   • ${categoryNames.length} categories ensured`);
+    console.log(`   • ${created.length} products created`);
 }
 
 main()

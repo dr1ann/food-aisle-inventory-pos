@@ -77,7 +77,7 @@ export async function checkoutSale(data: CheckoutSaleRequest) {
                 );
             }
 
-            const unitPrice = Number(product.price);
+            const unitPrice = Number(product.sellingPrice);
             const lineTotal = unitPrice * item.quantity;
             totalAmount += lineTotal;
 

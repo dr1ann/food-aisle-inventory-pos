@@ -24,9 +24,10 @@ export type AuthResponse = z.infer<typeof AuthResponseSchema>;
 export const CreateProductSchema = z.object({
     name: z.string().min(1),
     barcode: z.string().min(1),
-    price: z.string().regex(/^\d+(\.\d{1,2})?$/),
+    description: z.string().optional().nullable(),
+    costPrice: z.string().regex(/^\d+(\.\d{1,2})?$/),
+    sellingPrice: z.string().regex(/^\d+(\.\d{1,2})?$/),
     categoryId: z.string().min(1),
-    supplierId: z.string().optional().nullable(),
 });
 
 export type CreateProductRequest = z.infer<typeof CreateProductSchema>;

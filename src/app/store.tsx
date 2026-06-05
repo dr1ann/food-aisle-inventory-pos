@@ -14,8 +14,9 @@ export interface Product {
   id: string;
   name: string;
   category: string;
-  supplier: string;
-  price: number;
+  description: string;
+  costPrice: number;
+  sellingPrice: number;
   stock: number;
   status: 'In Stock' | 'Low Stock' | 'Out of Stock';
 }
@@ -49,7 +50,7 @@ export interface PurchaseOrder {
   supplierName: string;
   status: 'Pending' | 'Completed';
   date: string;
-  items: { productId: string; productName: string; quantity: number }[];
+  items: { productId: string; productName: string; costPrice: number; quantity: number }[];
 }
 
 export interface Sale {
@@ -96,8 +97,9 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 export interface ProductFormInput {
   name: string;
   categoryId: string;
-  supplierId?: string;
-  price: number;
+  description?: string;
+  costPrice: number;
+  sellingPrice: number;
 }
 
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
@@ -125,8 +127,9 @@ function mapProduct(product: ApiProductWithStock): Product {
     id: product.id,
     name: product.name,
     category: product.category.name,
-    supplier: product.supplier?.name ?? 'Unassigned',
-    price: Number(product.price),
+    description: product.description ?? '',
+    costPrice: Number(product.costPrice),
+    sellingPrice: Number(product.sellingPrice),
     stock: product.currentStock,
     status: toProductStatus(product.currentStock),
   };
@@ -163,6 +166,7 @@ function mapPurchaseOrder(order: ApiPurchaseOrder): PurchaseOrder {
     items: order.items.map((item) => ({
       productId: item.productId,
       productName: item.product.name,
+      costPrice: Number(item.product.costPrice),
       quantity: item.quantity,
     })),
   };
@@ -251,9 +255,10 @@ export function StoreProvider({ children, scope = 'admin' }: { children: ReactNo
       await apiService.createProduct({
         name: product.name,
         barcode: `${Date.now()}`,
-        price: product.price.toString(),
+        description: product.description || undefined,
+        costPrice: product.costPrice.toString(),
+        sellingPrice: product.sellingPrice.toString(),
         categoryId: product.categoryId,
-        supplierId: product.supplierId || undefined,
       });
       await refreshData();
     } catch (error) {
@@ -266,9 +271,10 @@ export function StoreProvider({ children, scope = 'admin' }: { children: ReactNo
     try {
       await apiService.updateProduct(id, {
         name: updates.name,
-        price: updates.price?.toString(),
+        description: updates.description,
+        costPrice: updates.costPrice?.toString(),
+        sellingPrice: updates.sellingPrice?.toString(),
         categoryId: updates.categoryId,
-        supplierId: updates.supplierId || undefined,
       });
       await refreshData();
     } catch (error) {

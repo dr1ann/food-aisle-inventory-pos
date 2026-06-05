@@ -40,9 +40,10 @@ export interface ApiProductWithStock {
     id: string;
     name: string;
     barcode: string;
-    price: string;
+    description: string | null;
+    costPrice: string;
+    sellingPrice: string;
     category: ApiCategory;
-    supplier: ApiSupplier | null;
     currentStock: number;
 }
 
@@ -68,6 +69,8 @@ export interface ApiPurchaseOrderItem {
     product: {
         id: string;
         name: string;
+        costPrice: string;
+        sellingPrice: string;
     };
 }
 
